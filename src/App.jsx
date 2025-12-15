@@ -24,7 +24,7 @@ const api = {
 // ==========================================
 // UTILS
 // ==========================================
-const getCleanImageUrl = (url) => {
+const getCleanImageUrl = (url, size = 'w1920') => {
     if (!url || typeof url !== 'string') return '';
     const u = url.trim();
     if (u.includes('drive.google.com') || u.includes('docs.google.com')) {
@@ -39,7 +39,7 @@ const getCleanImageUrl = (url) => {
              const match = u.match(/[-\w]{25,}/);
              if (match && match[0]) id = match[0];
         }
-        if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=w1920`;
+        if (id) return `https://drive.google.com/thumbnail?id=${id}&sz=${size}`; // รองรับการปรับขนาด
     }
     return u;
 };
@@ -787,7 +787,6 @@ function App() {
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     const load = async () => {
-        // 1. ลองโหลดจาก Cache ก่อน
         const cached = localStorage.getItem('phukhamData');
         if (cached) { 
             try { 
@@ -802,7 +801,6 @@ function App() {
             } 
         }
 
-        // 2. โหลดข้อมูลใหม่
         try { 
             const freshData = await api.fetchAll(); 
             if (freshData && Array.isArray(freshData.News)) {
@@ -817,17 +815,20 @@ function App() {
     
     useEffect(() => { load(); if(sessionStorage.getItem('phukham_admin_session') === 'true') setIsAdmin(true); }, []);
 
-    // Helper: ดึง Config
+    // Helper
     const getConfig = (key) => Array.isArray(data?.Config) ? (data.Config.find(c => c.Key === key)?.Value || '') : '';
 
-    // NEW: Update Favicon (Logo บน Tab)
+    // ===============================================
+    // NEW: อัปเดตไอคอน Tab Bar (Favicon) & iPad Icon
+    // ===============================================
     useEffect(() => {
         if (data) {
             const logoUrl = getConfig('SchoolLogo');
             if (logoUrl) {
-                const cleanLogoUrl = getCleanImageUrl(logoUrl);
+                // ขอรูปขนาดเล็ก 128px สำหรับไอคอน (เพื่อให้โหลดไว)
+                const cleanLogoUrl = getCleanImageUrl(logoUrl, 's128'); 
                 
-                // หา Link เก่า หรือสร้างใหม่ถ้าไม่มี
+                // 1. อัปเดต Favicon ปกติ
                 let link = document.querySelector("link[rel~='icon']");
                 if (!link) {
                     link = document.createElement('link');
@@ -835,6 +836,15 @@ function App() {
                     document.head.appendChild(link);
                 }
                 link.href = cleanLogoUrl;
+
+                // 2. อัปเดต Apple Touch Icon (สำหรับ iPad/iPhone)
+                let appleLink = document.querySelector("link[rel~='apple-touch-icon']");
+                if (!appleLink) {
+                    appleLink = document.createElement('link');
+                    appleLink.rel = 'apple-touch-icon';
+                    document.head.appendChild(appleLink);
+                }
+                appleLink.href = cleanLogoUrl;
             }
         }
     }, [data]);
@@ -842,7 +852,6 @@ function App() {
     const handleLogin = async (e) => { e.preventDefault(); setIsLoggingIn(true); try { const res = await api.post({ action: 'login', username: user, password: pass }); if(res.success) { setIsAdmin(true); setShowLogin(false); sessionStorage.setItem('phukham_admin_session', 'true'); } else { alert('รหัสผิดพลาด'); } } catch(e) { alert('Error'); } finally { setIsLoggingIn(false); } };
     const handleLogout = () => { if(confirm('ต้องการออกจากระบบ?')) { setIsAdmin(false); sessionStorage.removeItem('phukham_admin_session'); } };
 
-    // Loading Screen
     if(!data || !Array.isArray(data.News)) return (
         <div className="h-screen flex items-center justify-center bg-slate-50 flex-col gap-6 p-4 text-center">
             <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
