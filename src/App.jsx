@@ -25,7 +25,7 @@ const api = {
 // UTILS
 // ==========================================
 const getCleanImageUrl = (url) => {
-    if (!url) return '';
+    if (!url || typeof url !== 'string') return ''; // Safety check
     const u = url.trim();
     if (u.includes('drive.google.com') || u.includes('docs.google.com')) {
         let id = '';
@@ -45,7 +45,7 @@ const getCleanImageUrl = (url) => {
 };
 
 const getCleanPdfUrl = (url) => {
-    if (!url) return '';
+    if (!url || typeof url !== 'string') return '';
     const u = url.trim();
     if (u.includes('drive.google.com')) {
         return u.replace(/\/view.*/, '/preview').replace(/\/open\?id=/, '/file/d/').replace(/\/edit.*/, '/preview');
@@ -78,25 +78,26 @@ const smartLinkify = (htmlContent) => {
 // COMPONENTS
 // ==========================================
 
-const Navbar = ({ setPage, logoUrl, schoolName, schoolNameEN, pages, mainMenus }) => {
+const Navbar = ({ setPage, logoUrl, schoolName, schoolNameEN, pages = [], mainMenus = [] }) => {
     const [activeDropdown, setActiveDropdown] = useState(null);
 
-    const sortedMenus = mainMenus ? [...mainMenus]
-        .filter(m => m.ID !== 'contact') 
-        .sort((a,b) => Number(a.Order||0) - Number(b.Order||0)) : [];
+    // Safety filter: กรองข้อมูลที่อาจจะเป็น null ออก
+    const sortedMenus = Array.isArray(mainMenus) ? [...mainMenus]
+        .filter(m => m && m.ID !== 'contact') 
+        .sort((a,b) => Number(a?.Order||0) - Number(b?.Order||0)) : [];
     
     const menuRows = [];
     for (let i = 0; i < sortedMenus.length; i += 7) {
         menuRows.push(sortedMenus.slice(i, i + 7));
     }
 
-    const getSubMenu = (cat) => pages
-        .filter(p => p.MenuCategory === cat)
-        .sort((a,b) => Number(a.Order||0) - Number(b.Order||0))
+    const getSubMenu = (cat) => Array.isArray(pages) ? pages
+        .filter(p => p && p.MenuCategory === cat)
+        .sort((a,b) => Number(a?.Order||0) - Number(b?.Order||0))
         .map(p => ({
             id: p.PageKey, 
             label: p.PageLabel || '' 
-        }));
+        })) : [];
     
     const handleSubMenuClick = (e, id) => { 
         e.stopPropagation(); 
@@ -110,7 +111,11 @@ const Navbar = ({ setPage, logoUrl, schoolName, schoolNameEN, pages, mainMenus }
         else if (m.Type === 'dropdown') { setActiveDropdown(prev => prev === m.ID ? null : m.ID); } 
         else if (m.Type === 'page') {
             const targetPage = pages.find(p => p.MenuCategory === m.ID);
-            if (targetPage) setPage({id: 'page', key: targetPage.PageKey});
+            if (targetPage) {
+                setPage({id: 'page', key: targetPage.PageKey});
+            } else {
+                alert('ยังไม่มีเนื้อหาสำหรับเมนูนี้');
+            }
             setActiveDropdown(null);
         }
     };
@@ -165,8 +170,8 @@ const Navbar = ({ setPage, logoUrl, schoolName, schoolNameEN, pages, mainMenus }
     );
 };
 
-const Hero = ({ banners }) => {
-    const activeBanners = banners ? banners.filter(b => String(b.Active).trim().toUpperCase() === 'TRUE').sort((a,b) => Number(a.Order||0) - Number(b.Order||0)) : [];
+const Hero = ({ banners = [] }) => {
+    const activeBanners = Array.isArray(banners) ? banners.filter(b => b && String(b.Active).trim().toUpperCase() === 'TRUE').sort((a,b) => Number(a?.Order||0) - Number(b?.Order||0)) : [];
     const displayBanners = activeBanners.length > 0 ? activeBanners : [{ ImageURL: 'https://via.placeholder.com/1920x800/003366/ffffff?text=No+Active+Banner', Caption: 'ยินดีต้อนรับ' }];
     const [idx, setIdx] = useState(0);
     useEffect(() => { if (displayBanners.length <= 1) return; const interval = setInterval(() => setIdx(prev => (prev + 1) % displayBanners.length), 5000); return () => clearInterval(interval); }, [displayBanners.length]);
@@ -178,7 +183,7 @@ const Hero = ({ banners }) => {
                     <img src={getCleanImageUrl(b.ImageURL)} className={`slide-image ${i === idx ? 'slide-active' : ''}`} onError={(e)=>{e.target.onerror=null; e.target.src='https://via.placeholder.com/1920x800/003366/ffffff?text=Image+Error';}} />
                 </div>
             ))}
-            {displayBanners[idx].Caption && (
+            {displayBanners[idx] && displayBanners[idx].Caption && (
                 <div className="absolute inset-0 z-20 flex flex-col justify-end items-center text-center p-4 pb-12 pointer-events-none">
                     <div className="content-container"><h2 className="text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-2xl tracking-tight leading-tight" style={{textShadow: '0 2px 4px rgba(0,0,0,0.5)'}}>{displayBanners[idx].Caption}</h2></div>
                 </div>
@@ -192,12 +197,13 @@ const Hero = ({ banners }) => {
     );
 };
 
-const NewsletterSection = ({ items }) => {
+const NewsletterSection = ({ items = [] }) => {
     const scrollRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
     const [startX, setStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
-    const activeItems = items ? items.filter(b => String(b.Active).trim().toUpperCase() === 'TRUE').sort((a,b) => Number(b.Order||0) - Number(a.Order||0)) : [];
+    
+    const activeItems = Array.isArray(items) ? items.filter(b => b && String(b.Active).trim().toUpperCase() === 'TRUE').sort((a,b) => Number(b?.Order||0) - Number(a?.Order||0)) : [];
     if (activeItems.length === 0) return null;
 
     const onMouseDown = (e) => { setIsDragging(true); setStartX(e.pageX - scrollRef.current.offsetLeft); setScrollLeft(scrollRef.current.scrollLeft); };
@@ -226,14 +232,14 @@ const NewsletterSection = ({ items }) => {
     );
 };
 
-const NewsDetail = ({ item, defaultImage, onBack }) => {
+const NewsDetail = ({ item, defaultImage }) => {
+    if (!item) return <div className="p-8 text-center">ไม่พบข้อมูล</div>;
     const imageUrl = item.ImageURL ? getCleanImageUrl(item.ImageURL) : (defaultImage ? getCleanImageUrl(defaultImage) : '');
     const hasImage = !!imageUrl;
     
     return (
         <div className="w-full bg-white min-h-[calc(100vh-6rem)]">
             <div className="content-container py-12 fade-in">
-                {/* ปุ่มย้อนกลับถูกลบออกแล้วตามที่ขอ */}
                 <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden border border-gray-100">
                     {hasImage && <div className="w-full flex justify-center bg-gray-100 border-b border-gray-100"><img src={imageUrl} className="w-full h-auto object-cover" style={{ maxHeight: '600px', width: 'auto', maxWidth: '100%' }} onError={(e)=>{e.target.onerror=null; e.target.src='https://via.placeholder.com/1280x720?text=No+Image';}} /></div>}
                     <div className="p-12 md:p-16 max-w-5xl mx-auto">
@@ -257,6 +263,7 @@ const NewsDetail = ({ item, defaultImage, onBack }) => {
 };
 
 const NewsCard = ({ n, defaultImage, onClick }) => {
+    if (!n) return null;
     const imageUrl = n.ImageURL ? getCleanImageUrl(n.ImageURL) : (defaultImage ? getCleanImageUrl(defaultImage) : '');
     const hasImage = !!imageUrl;
     
@@ -274,7 +281,7 @@ const NewsCard = ({ n, defaultImage, onClick }) => {
                     <div className="absolute top-4 left-4 pointer-events-none"><span className="bg-white/95 backdrop-blur text-[#003366] text-xs font-bold px-3 py-1.5 rounded-lg shadow-md">{n.Category}</span></div>
             </div>
             <div className="p-8 flex-1 flex flex-col">
-                <div className="text-xs text-gray-400 mb-3 font-medium flex items-center gap-2"><i className="far fa-clock"></i> {new Date(n.Date).toLocaleDateString('th-TH')}</div>
+                <div className="text-xs text-gray-400 mb-3 font-medium flex items-center gap-2"><i className="far fa-clock"></i> {new Date(n.Date || new Date()).toLocaleDateString('th-TH')}</div>
                 <h3 className="font-bold text-xl mb-3 text-primary line-clamp-2 group-hover:text-[#004993] transition leading-snug">{n.Title}</h3>
                 <p className="text-gray-500 text-sm mb-6 flex-1 leading-relaxed">{getExcerpt(n.Content, 10)}</p>
                 <div className="pt-5 border-t border-gray-50 text-[#004993] text-sm font-bold group-hover:underline flex items-center gap-1">อ่านเพิ่มเติม <i className="fas fa-arrow-right text-xs transition-transform group-hover:translate-x-1"></i></div>
@@ -325,7 +332,8 @@ const AdminPanel = ({ data, reload, onLogout }) => {
     const [editItem, setEditItem] = useState(null);
     const [form, setForm] = useState({});
     
-    const getConfig = (key) => data.Config.find(c => c.Key === key)?.Value || '';
+    // Safety check for Config
+    const getConfig = (key) => Array.isArray(data.Config) ? (data.Config.find(c => c.Key === key)?.Value || '') : '';
 
     const [settingsForm, setSettingsForm] = useState({ 
         SchoolLogo: '', 
@@ -534,7 +542,7 @@ const AdminPanel = ({ data, reload, onLogout }) => {
     };
 
     const getSortedAdminData = (items) => {
-        if(!items) return [];
+        if(!Array.isArray(items)) return [];
         return [...items].sort((a,b) => {
             const orderA = Number(a.Order) || 0;
             const orderB = Number(b.Order) || 0;
@@ -737,26 +745,26 @@ const AdminPanel = ({ data, reload, onLogout }) => {
 // ==========================================
 
 function App() {
-    // 1. ระบบจดจำหน้า (State Initialization)
-    // ตรงนี้สำคัญมาก: เราบอกให้ React อ่าน URL ตั้งแต่เริ่มรันครั้งแรก
     const [page, _setPage] = useState(() => {
-        const params = new URLSearchParams(window.location.search);
-        const pId = params.get('page');
-        const key = params.get('key');
-        if (pId) {
-            return { id: pId, key: key };
-        }
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const pId = params.get('page');
+            const key = params.get('key');
+            if (pId) {
+                return { id: pId, key: key };
+            }
+        } catch(e) {}
         return { id: 'home' };
     });
 
     const setPage = (newPage) => { 
         _setPage(newPage); 
-        const params = new URLSearchParams(); 
-        if (newPage.id) params.set('page', newPage.id); 
-        if (newPage.key) params.set('key', newPage.key); 
-        
-        // อัปเดต URL บน Browser โดยไม่รีโหลดหน้า
-        window.history.pushState(newPage, '', `${window.location.pathname}?${params.toString()}`); 
+        try {
+            const params = new URLSearchParams(); 
+            if (newPage.id) params.set('page', newPage.id); 
+            if (newPage.key) params.set('key', newPage.key); 
+            window.history.pushState(newPage, '', `${window.location.pathname}?${params.toString()}`); 
+        } catch(e) {}
     };
 
     useEffect(() => {
@@ -764,7 +772,6 @@ function App() {
             if (event.state) { 
                 _setPage(event.state); 
             } else { 
-                // กรณี Back/Forward แล้วไม่มี State ให้เช็คจาก URL อีกรอบ
                 const params = new URLSearchParams(window.location.search); 
                 _setPage({ id: params.get('page') || 'home', key: params.get('key') }); 
             } 
@@ -780,24 +787,31 @@ function App() {
     const [user, setUser] = useState('');
     const [pass, setPass] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
 
     const load = async () => {
         // 1. ลองโหลดจาก Cache ก่อน (เปิดปุ๊บติดปั๊บ)
         const cached = localStorage.getItem('phukhamData');
         if (cached) { 
             try { 
-                setData(JSON.parse(cached)); 
-                setIsLoading(false); // หยุดหมุนทันที
-            } catch(e) {} 
+                const parsed = JSON.parse(cached);
+                // Safety Check: ต้องมีข้อมูลสำคัญครบ ถึงจะใช้ได้
+                if (parsed && Array.isArray(parsed.News) && Array.isArray(parsed.Config)) {
+                    setData(parsed); 
+                } else {
+                    localStorage.removeItem('phukhamData'); // ล้างข้อมูลเสีย
+                }
+            } catch(e) {
+                localStorage.removeItem('phukhamData');
+            } 
         }
 
-        // 2. แอบโหลดข้อมูลใหม่เงียบๆ
+        // 2. โหลดข้อมูลใหม่
         try { 
             const freshData = await api.fetchAll(); 
-            setData(freshData); 
-            localStorage.setItem('phukhamData', JSON.stringify(freshData));
-            setIsLoading(false);
+            if (freshData && Array.isArray(freshData.News)) {
+                setData(freshData); 
+                localStorage.setItem('phukhamData', JSON.stringify(freshData));
+            }
         } catch (err) { 
             console.error(err);
             if (!cached) alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาลองใหม่");
@@ -809,32 +823,38 @@ function App() {
     const handleLogin = async (e) => { e.preventDefault(); setIsLoggingIn(true); try { const res = await api.post({ action: 'login', username: user, password: pass }); if(res.success) { setIsAdmin(true); setShowLogin(false); sessionStorage.setItem('phukham_admin_session', 'true'); } else { alert('รหัสผิดพลาด'); } } catch(e) { alert('Error'); } finally { setIsLoggingIn(false); } };
     const handleLogout = () => { if(confirm('ต้องการออกจากระบบ?')) { setIsAdmin(false); sessionStorage.removeItem('phukham_admin_session'); } };
 
-    // Loading Screen แบบดูดี
-    if(!data) return (
+    // Loading Screen แบบดูดี และปลอดภัย
+    if(!data || !Array.isArray(data.News)) return (
         <div className="h-screen flex items-center justify-center bg-slate-50 flex-col gap-6 p-4 text-center">
             <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
             <div>
                 <h3 className="text-xl font-bold text-slate-700 mb-2">กำลังเชื่อมต่อฐานข้อมูล...</h3>
                 <p className="text-slate-500 text-sm">กำลังโหลดข้อมูลจาก Google Cloud</p>
+                <button onClick={()=>{localStorage.removeItem('phukhamData'); window.location.reload()}} className="mt-8 text-xs text-gray-400 hover:text-red-500 underline">ล้างแคชและโหลดใหม่</button>
             </div>
         </div>
     );
 
-    const getConfig = (key) => data.Config?.find(c => c.Key === key)?.Value || '';
+    const getConfig = (key) => Array.isArray(data.Config) ? (data.Config.find(c => c.Key === key)?.Value || '') : '';
     const logoUrl = getConfig('SchoolLogo');
     const schoolName = getConfig('SchoolName') || 'โรงเรียนพุขามครุฑมณีอุทิศ';
-    const sortedNews = [...data.News].sort((a,b) => { if(a.Order && b.Order) return Number(b.Order) - Number(a.Order); return new Date(b.Date) - new Date(a.Date); });
+    
+    // Safety Sort: ป้องกันการ Error ถ้า Date เป็นค่าว่าง
+    const sortedNews = Array.isArray(data.News) ? [...data.News].sort((a,b) => { 
+        if(a.Order && b.Order) return Number(b.Order) - Number(a.Order);
+        return new Date(b.Date || 0) - new Date(a.Date || 0); 
+    }) : [];
 
     return (
         <div className="min-h-screen flex flex-col font-sarabun bg-slate-50 relative w-full">
             {isAdmin ? <AdminPanel data={data} reload={load} onLogout={handleLogout} /> : (
                 <>
-                    <Navbar setPage={setPage} logoUrl={logoUrl} schoolName={schoolName} schoolNameEN={getConfig('SchoolNameEN')} pages={data.Pages} mainMenus={data.Menus} />
+                    <Navbar setPage={setPage} logoUrl={logoUrl} schoolName={schoolName} schoolNameEN={getConfig('SchoolNameEN')} pages={data.Pages || []} mainMenus={data.Menus || []} />
                     <main className="flex-grow w-full bg-white">
                         {page.id === 'home' && (
                             <>
-                                <Hero banners={data.Banners} />
-                                <NewsletterSection items={data.Newsletters} />
+                                <Hero banners={data.Banners || []} />
+                                <NewsletterSection items={data.Newsletters || []} />
                                 <div className="content-container py-16">
                                     <div className="flex items-center justify-between mb-10 border-b border-gray-200 pb-4"><h2 className="text-3xl font-bold text-primary border-l-8 border-primary pl-4">ข่าวประชาสัมพันธ์ล่าสุด</h2><button onClick={()=>setPage({id:'news'})} className="text-[#004993] font-bold hover:underline">ดูทั้งหมด</button></div>
                                     <div className="grid md:grid-cols-3 gap-8">{sortedNews.slice(0,3).map((n,i)=>(<NewsCard key={i} n={n} defaultImage={getConfig('DefaultNewsImage')} onClick={()=>setPage({id:'news_detail', key: n.ID, item: n})} />))}</div>
@@ -842,9 +862,9 @@ function App() {
                             </>
                         )}
                         {page.id === 'news' && <div className="content-container py-12"><h2 className="text-3xl font-bold text-center mb-10 text-primary">ข่าวสารทั้งหมด</h2><div className="grid md:grid-cols-3 gap-8">{sortedNews.map((n,i)=>(<NewsCard key={i} n={n} defaultImage={getConfig('DefaultNewsImage')} onClick={()=>setPage({id:'news_detail', key: n.ID, item: n})} />))}</div></div>}
-                        {page.id === 'news_detail' && (()=>{ const newsItem = page.item || (data && data.News && page.key ? data.News.find(n => n.ID == page.key) : null); return newsItem ? <NewsDetail item={newsItem} defaultImage={getConfig('DefaultNewsImage')} onBack={()=>setPage({id: 'news'})} /> : <div className="p-12 text-center text-gray-500">Loading...</div> })()}
-                        {page.id === 'page' && <div className="content-container py-12"><div className="bg-white p-12 rounded-3xl shadow-lg border border-gray-100 fade-in min-h-[600px]">{(() => { const p = data.Pages.find(x => x.PageKey === page.key) || {}; const pageImages = p.ImageURL ? p.ImageURL.split(',').map(url => url.trim()).filter(url => url) : []; return (<><h2 className="text-4xl font-bold text-primary mb-8 pb-4 border-b border-gray-200">{p.Title}</h2><div className="prose prose-lg max-w-none text-slate-700 leading-relaxed html-content" dangerouslySetInnerHTML={{__html: p.Content}} />{pageImages.length > 0 && (<div className="mt-10 flex flex-col items-center">{pageImages.map((imgUrl, idx) => (<img key={idx} src={getCleanImageUrl(imgUrl)} className="w-full h-auto block" style={{ margin: 0, padding: 0, display: 'block' }} />))}</div>)}</>); })()}</div></div>}
-                        {page.id === 'personnel' && <div className="content-container py-12"><h2 className="text-3xl font-bold text-center mb-12 text-primary">บุคลากร</h2><div className="grid grid-cols-1 md:grid-cols-4 gap-8">{data.Personnel.sort((a,b) => Number(a.Order||0) - Number(b.Order||0)).map((p,i)=>(<div key={i} className="bg-white p-8 rounded-2xl shadow-sm text-center border hover:shadow-xl transition transform hover:-translate-y-2"><img src={getCleanImageUrl(p.ImageURL)} className="w-32 h-32 mx-auto rounded-full object-cover mb-4 shadow-md border-4 border-white" onError={(e)=>e.target.src='https://via.placeholder.com/150'} /><h4 className="font-bold text-xl text-primary">{p.Name}</h4><p className="text-slate-500 text-sm font-medium mt-1">{p.Position}</p><span className="text-xs text-primary bg-blue-50 px-3 py-1 rounded-full mt-3 inline-block font-semibold">{p.Group}</span></div>))}</div></div>}
+                        {page.id === 'news_detail' && (()=>{ const newsItem = page.item || (data && data.News && page.key ? data.News.find(n => n.ID == page.key) : null); return newsItem ? <NewsDetail item={newsItem} defaultImage={getConfig('DefaultNewsImage')} /> : <div className="p-12 text-center text-gray-500">Loading...</div> })()}
+                        {page.id === 'page' && <div className="content-container py-12"><div className="bg-white p-12 rounded-3xl shadow-lg border border-gray-100 fade-in min-h-[600px]">{(() => { const p = Array.isArray(data.Pages) ? data.Pages.find(x => x.PageKey === page.key) : {}; if(!p) return <div>ไม่พบข้อมูล</div>; const pageImages = p.ImageURL ? p.ImageURL.split(',').map(url => url.trim()).filter(url => url) : []; return (<><h2 className="text-4xl font-bold text-primary mb-8 pb-4 border-b border-gray-200">{p.Title}</h2><div className="prose prose-lg max-w-none text-slate-700 leading-relaxed html-content" dangerouslySetInnerHTML={{__html: p.Content}} />{pageImages.length > 0 && (<div className="mt-10 flex flex-col items-center">{pageImages.map((imgUrl, idx) => (<img key={idx} src={getCleanImageUrl(imgUrl)} className="w-full h-auto block" style={{ margin: 0, padding: 0, display: 'block' }} />))}</div>)}</>); })()}</div></div>}
+                        {page.id === 'personnel' && <div className="content-container py-12"><h2 className="text-3xl font-bold text-center mb-12 text-primary">บุคลากร</h2><div className="grid grid-cols-1 md:grid-cols-4 gap-8">{(data.Personnel || []).sort((a,b) => Number(a.Order||0) - Number(b.Order||0)).map((p,i)=>(<div key={i} className="bg-white p-8 rounded-2xl shadow-sm text-center border hover:shadow-xl transition transform hover:-translate-y-2"><img src={getCleanImageUrl(p.ImageURL)} className="w-32 h-32 mx-auto rounded-full object-cover mb-4 shadow-md border-4 border-white" onError={(e)=>e.target.src='https://via.placeholder.com/150'} /><h4 className="font-bold text-xl text-primary">{p.Name}</h4><p className="text-slate-500 text-sm font-medium mt-1">{p.Position}</p><span className="text-xs text-primary bg-blue-50 px-3 py-1 rounded-full mt-3 inline-block font-semibold">{p.Group}</span></div>))}</div></div>}
                     </main>
                     <Footer schoolName={schoolName} schoolNameEN={getConfig('SchoolNameEN')} schoolAddress={getConfig('SchoolAddress')} schoolPhone={getConfig('SchoolPhone')} fbName={getConfig('FacebookName')} fbUrl={getConfig('FacebookURL')} logoUrl={logoUrl} onAdminClick={() => setShowLogin(true)} />
                     {showLogin && (
