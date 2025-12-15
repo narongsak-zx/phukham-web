@@ -25,7 +25,7 @@ const api = {
 // UTILS
 // ==========================================
 const getCleanImageUrl = (url) => {
-    if (!url || typeof url !== 'string') return ''; // Safety check
+    if (!url || typeof url !== 'string') return '';
     const u = url.trim();
     if (u.includes('drive.google.com') || u.includes('docs.google.com')) {
         let id = '';
@@ -81,7 +81,6 @@ const smartLinkify = (htmlContent) => {
 const Navbar = ({ setPage, logoUrl, schoolName, schoolNameEN, pages = [], mainMenus = [] }) => {
     const [activeDropdown, setActiveDropdown] = useState(null);
 
-    // Safety filter: กรองข้อมูลที่อาจจะเป็น null ออก
     const sortedMenus = Array.isArray(mainMenus) ? [...mainMenus]
         .filter(m => m && m.ID !== 'contact') 
         .sort((a,b) => Number(a?.Order||0) - Number(b?.Order||0)) : [];
@@ -332,7 +331,6 @@ const AdminPanel = ({ data, reload, onLogout }) => {
     const [editItem, setEditItem] = useState(null);
     const [form, setForm] = useState({});
     
-    // Safety check for Config
     const getConfig = (key) => Array.isArray(data.Config) ? (data.Config.find(c => c.Key === key)?.Value || '') : '';
 
     const [settingsForm, setSettingsForm] = useState({ 
@@ -789,16 +787,15 @@ function App() {
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     const load = async () => {
-        // 1. ลองโหลดจาก Cache ก่อน (เปิดปุ๊บติดปั๊บ)
+        // 1. ลองโหลดจาก Cache ก่อน
         const cached = localStorage.getItem('phukhamData');
         if (cached) { 
             try { 
                 const parsed = JSON.parse(cached);
-                // Safety Check: ต้องมีข้อมูลสำคัญครบ ถึงจะใช้ได้
                 if (parsed && Array.isArray(parsed.News) && Array.isArray(parsed.Config)) {
                     setData(parsed); 
                 } else {
-                    localStorage.removeItem('phukhamData'); // ล้างข้อมูลเสีย
+                    localStorage.removeItem('phukhamData'); 
                 }
             } catch(e) {
                 localStorage.removeItem('phukhamData');
@@ -820,10 +817,32 @@ function App() {
     
     useEffect(() => { load(); if(sessionStorage.getItem('phukham_admin_session') === 'true') setIsAdmin(true); }, []);
 
+    // Helper: ดึง Config
+    const getConfig = (key) => Array.isArray(data?.Config) ? (data.Config.find(c => c.Key === key)?.Value || '') : '';
+
+    // NEW: Update Favicon (Logo บน Tab)
+    useEffect(() => {
+        if (data) {
+            const logoUrl = getConfig('SchoolLogo');
+            if (logoUrl) {
+                const cleanLogoUrl = getCleanImageUrl(logoUrl);
+                
+                // หา Link เก่า หรือสร้างใหม่ถ้าไม่มี
+                let link = document.querySelector("link[rel~='icon']");
+                if (!link) {
+                    link = document.createElement('link');
+                    link.rel = 'icon';
+                    document.head.appendChild(link);
+                }
+                link.href = cleanLogoUrl;
+            }
+        }
+    }, [data]);
+
     const handleLogin = async (e) => { e.preventDefault(); setIsLoggingIn(true); try { const res = await api.post({ action: 'login', username: user, password: pass }); if(res.success) { setIsAdmin(true); setShowLogin(false); sessionStorage.setItem('phukham_admin_session', 'true'); } else { alert('รหัสผิดพลาด'); } } catch(e) { alert('Error'); } finally { setIsLoggingIn(false); } };
     const handleLogout = () => { if(confirm('ต้องการออกจากระบบ?')) { setIsAdmin(false); sessionStorage.removeItem('phukham_admin_session'); } };
 
-    // Loading Screen แบบดูดี และปลอดภัย
+    // Loading Screen
     if(!data || !Array.isArray(data.News)) return (
         <div className="h-screen flex items-center justify-center bg-slate-50 flex-col gap-6 p-4 text-center">
             <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -835,11 +854,9 @@ function App() {
         </div>
     );
 
-    const getConfig = (key) => Array.isArray(data.Config) ? (data.Config.find(c => c.Key === key)?.Value || '') : '';
     const logoUrl = getConfig('SchoolLogo');
     const schoolName = getConfig('SchoolName') || 'โรงเรียนพุขามครุฑมณีอุทิศ';
     
-    // Safety Sort: ป้องกันการ Error ถ้า Date เป็นค่าว่าง
     const sortedNews = Array.isArray(data.News) ? [...data.News].sort((a,b) => { 
         if(a.Order && b.Order) return Number(b.Order) - Number(a.Order);
         return new Date(b.Date || 0) - new Date(a.Date || 0); 
