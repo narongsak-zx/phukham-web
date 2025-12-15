@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>โรงเรียนพุขามครุฑมณีอุทิศ</title>
     
-    <!-- ฟอนต์ Sarabun และไอคอน -->
+    <!-- 1. Preconnect: เชื่อมต่อ Server Google ล่วงหน้า เพื่อความเร็ว -->
+    <link rel="preconnect" href="https://script.google.com">
+    <link rel="preconnect" href="https://drive.google.com">
+    <link rel="preconnect" href="https://lh3.googleusercontent.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- 2. Styles & Fonts -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- สังเกตนะครับ: ผมเอา Script Tailwind, React, Babel ออกหมดแล้ว เพราะ Vite จัดการให้แล้ว -->
   </head>
   <body>
-    <!-- ริบบิ้นไว้อาลัย -->
+    <!-- Ribbon -->
     <img src="https://raw.githubusercontent.com/KongNontawatDev/Black-Mourning-Ribbon/2150640c0e623c7fbcca07024287b597f7999a84/ribbon_top_right.png" 
      alt="Black mourning ribbon" 
      style="position:fixed; top:0; right:0; width:70px; opacity:0.9; z-index:9999; pointer-events:none;"
@@ -20,7 +25,7 @@
 
     <div id="root"></div>
     
-    <!-- จุดสำคัญ: เรียกใช้ไฟล์ main.jsx ที่เราสร้างไว้ -->
+    <!-- เรียกใช้ React ที่ Build แล้วเท่านั้น (ห้ามมี script อื่น) -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
